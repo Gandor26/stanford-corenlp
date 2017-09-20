@@ -1,15 +1,15 @@
 from setuptools import setup
 
 setup(
-    name='stanfordcorenlp',
-    packages=['stanfordcorenlp'],
+    name='corenlp',
+    packages=['corenlp'],
     version='3.7.0.2',
     description='Python wrapper for Stanford CoreNLP.',
 
-    author='Lynten Guo',
-    author_email='1216920263@qq.com',
+    author='Lynten Guo / Xiaoyong Jin',
+    author_email='1216920263@qq.com / x_jin@ucsb.edu',
 
-    url='https://github.com/Lynten/stanford-corenlp',
+    url='https://github.com/Gandor26/stanford-corenlp',
     keywords=['NLP', 'CL', 'natural language processing',
               'computational linguistics'],
     install_requires=['psutil', 'requests'],
