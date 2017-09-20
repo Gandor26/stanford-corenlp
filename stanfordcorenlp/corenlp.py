@@ -1,77 +1,66 @@
-# _*_coding:utf-8_*_
-from __future__ import print_function
-
-import glob
-import json
-import logging
-import os
+import glob, json, logging
+import os, sys
 import re
-import signal
-import socket
-import subprocess
-import sys
+import subprocess, socket, signal
 import time
-
 import psutil
 
-try:
-    from urlparse import urlparse
-except ImportError:
-    from urllib.parse import urlparse
-
+from urllib.parse import urlparse
+from download import download_model
 import requests
 
 
-class StanfordCoreNLP:
-    def __init__(self, path_or_host, port=9000, memory='4g', lang='en', timeout=1500, quiet=True,
-                 logging_level=logging.WARNING):
+class StanfordCoreNLP(object):
+    def __init__(self, path_or_host, port=8000, memory='4g', lang='en', timeout=1500, quiet=True):
         self.path_or_host = path_or_host
         self.port = port
         self.memory = memory
         self.lang = lang
         self.timeout = timeout
         self.quiet = quiet
-        self.logging_level = logging_level
 
-        logging.basicConfig(level=self.logging_level)
+        logging.basicConfig(level=logging.WARNING)
 
-        # Check args
-        self._check_args()
+        if self.lang not in ['en', 'zh', 'ar', 'fr', 'de', 'es']:
+            raise ValueError('''lang=' + self.lang + ' not supported.
+                                Use English(en), Chinese(zh), Arabic(ar), French(fr), German(de), Spanish(es).''')
+        if not re.match('\dg', self.memory):
+            raise ValueError('memory=' + self.memory + ' not supported. Use 4g, 6g, 8g and etc.')
 
         if path_or_host.startswith('http'):
             self.url = path_or_host + ':' + str(port)
-            logging.info('Using an existing server {}'.format(self.url))
+            logging.info('Using an existing server %s' % self.url)
         else:
-
-            # Check Java
             if not subprocess.call(['java', '-version'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT) == 0:
-                raise RuntimeError('Java not found.')
-
-            # Check if the dir exists
+                raise RuntimeError('Java not found')
             if not os.path.isdir(self.path_or_host):
-                raise IOError(str(self.path_or_host) + ' is not a directory.')
+                raise IOError('%s is not a directory.' % self.path_or_host)
             directory = os.path.normpath(self.path_or_host) + os.sep
+            tmp_dir = directory + 'tmp'
+            if not os.path.exists(tmp_dir):
+                os.mkdir(tmp_dir)
+            switcher = {'en': 'stanford-corenlp-[0-9].[0-9].[0-9]-models.jar',
+                        'zh': 'stanford-chinese-corenlp-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]-models.jar',
+                        'ar': 'stanford-arabic-corenlp-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]-models.jar',
+                        'fr': 'stanford-french-corenlp-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]-models.jar',
+                        'de': 'stanford-german-corenlp-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]-models.jar',
+                        'es': 'stanford-spanish-corenlp-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]-models.jar'}
+            jars = {'en': 'stanford-corenlp-x.x.x-models.jar',
+                    'zh': 'stanford-chinese-corenlp-yyyy-MM-dd-models.jar',
+                    'ar': 'stanford-arabic-corenlp-yyyy-MM-dd-models.jar',
+                    'fr': 'stanford-french-corenlp-yyyy-MM-dd-models.jar',
+                    'de': 'stanford-german-corenlp-yyyy-MM-dd-models.jar',
+                    'es': 'stanford-spanish-corenlp-yyyy-MM-dd-models.jar'}
 
-            # Check if the language specific model file exists
-            switcher = {
-                'en': 'stanford-corenlp-[0-9].[0-9].[0-9]-models.jar',
-                'zh': 'stanford-chinese-corenlp-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]-models.jar',
-                'ar': 'stanford-arabic-corenlp-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]-models.jar',
-                'fr': 'stanford-french-corenlp-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]-models.jar',
-                'de': 'stanford-german-corenlp-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]-models.jar',
-                'es': 'stanford-spanish-corenlp-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]-models.jar'
-            }
-            jars = {
-                'en': 'stanford-corenlp-x.x.x-models.jar',
-                'zh': 'stanford-chinese-corenlp-yyyy-MM-dd-models.jar',
-                'ar': 'stanford-arabic-corenlp-yyyy-MM-dd-models.jar',
-                'fr': 'stanford-french-corenlp-yyyy-MM-dd-models.jar',
-                'de': 'stanford-german-corenlp-yyyy-MM-dd-models.jar',
-                'es': 'stanford-spanish-corenlp-yyyy-MM-dd-models.jar'
-            }
             if len(glob.glob(directory + switcher.get(self.lang))) <= 0:
-                raise IOError(jars.get(
-                    self.lang) + ' not exists. You should download and place it in the ' + directory + ' first.')
+                print(jars.get(self.lang)+" doesn't exist")
+                flag = input('Do you want to download java model in %s ? (Y/n)' % directory)
+                if flag in ['Y', 'y']:
+                    print('Download CoreNLP lib and models...')
+                    download_model(directory, self.lang)
+                    print('Finish Downloading!')
+                else:
+                    raise IOError("You should download and place it in the %s first." % (jars.get(self.lang), directory))
 
             # Check if the port is in use
             if self.port in [conn.laddr[1] for conn in psutil.net_connections()]:
@@ -84,7 +73,7 @@ class StanfordCoreNLP:
             java_class = "edu.stanford.nlp.pipeline.StanfordCoreNLPServer"
             path = '"{}*"'.format(directory)
 
-            args = [cmd, java_args, '-cp', path, java_class, '-port', str(self.port)]
+            args = [cmd, '-Djava.io.tmpdir=%s'%tmp_dir, java_args, '-cp', path, java_class, '-port', str(self.port)]
 
             args = ' '.join(args)
 
@@ -98,6 +87,7 @@ class StanfordCoreNLP:
 
                 self.p = subprocess.Popen(args, shell=True, stdout=out_file, stderr=subprocess.STDOUT)
                 logging.info('Server shell PID: {}'.format(self.p.pid))
+                print('Server started')
 
             self.url = 'http://localhost:' + str(self.port)
 
@@ -176,10 +166,3 @@ class StanfordCoreNLP:
         r_dict = json.loads(r.text)
 
         return r_dict
-
-    def _check_args(self):
-        if self.lang not in ['en', 'zh', 'ar', 'fr', 'de', 'es']:
-            raise ValueError(
-                'lang=' + self.lang + ' not supported. Use English(en), Chinese(zh), Arabic(ar), French(fr), German(de), Spanish(es).')
-        if not re.match('\dg', self.memory):
-            raise ValueError('memory=' + self.memory + ' not supported. Use 4g, 6g, 8g and etc. ')
