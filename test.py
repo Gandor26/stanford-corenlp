@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from stanfordcorenlp import StanfordCoreNLP
+from corenlp import StanfordCoreNLP
+import time
 
 local_corenlp_path = './tmp'
 
@@ -13,7 +14,8 @@ print('Named Entities:', nlp.ner(sentence))
 print('Constituency Parsing:', nlp.parse(sentence))
 print('Dependency Parsing:', nlp.dependency_parse(sentence))
 
-nlp.__del__()
+del nlp
+time.sleep(10)
 # Other human languages support, e.g. Chinese
 nlp = StanfordCoreNLP(local_corenlp_path, lang='zh', quiet=False)
 
@@ -24,12 +26,14 @@ print(nlp.ner(sentence))
 print(nlp.parse(sentence))
 print(nlp.dependency_parse(sentence))
 
-nlp.__del__()
+del nlp
+time.sleep(10)
 # General Stanford CoreNLP API
 nlp = StanfordCoreNLP(local_corenlp_path, memory='8g', lang='zh')
 print(nlp.annotate(sentence))
 
-nlp.__del__()
+del nlp
+time.sleep(10)
 nlp = StanfordCoreNLP(local_corenlp_path)
 
 text = 'Guangdong University of Foreign Studies is located in Guangzhou. ' \
@@ -37,6 +41,7 @@ text = 'Guangdong University of Foreign Studies is located in Guangzhou. ' \
 print(nlp.annotate(text,
                    properties={'annotators': 'tokenize,ssplit,pos', 'pinelineLanguage': 'en', 'outputFormat': 'xml'}))
 
-nlp.__del__()
+del nlp
+time.sleep(10)
 # Use an existing server
 nlp = StanfordCoreNLP('http://corenlp.run', port=80)

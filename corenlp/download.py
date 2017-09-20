@@ -16,7 +16,7 @@ def download_lib(directory):
 
 def download_model(directory, lang):
     directory = os.path.abspath(directory)+os.path.sep
-    if len(glob.glob('stanford-corenlp-[0-9].[0-9].[0-9].jar')) <= 0:
+    if len(glob.glob(directory+'stanford-corenlp-[0-9].[0-9].[0-9].jar')) <= 0:
         download_lib(directory)
     lang_dict = {'en': 'english',
                 'en-kbp': 'english-kbp',

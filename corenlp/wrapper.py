@@ -6,7 +6,7 @@ import time
 import psutil
 
 from urllib.parse import urlparse
-from download import download_model
+from .download import download_model
 import requests
 
 
