@@ -1,6 +1,7 @@
+# -*- coding: utf-8 -*-
 from stanfordcorenlp import StanfordCoreNLP
 
-local_corenlp_path = './stanfordcorenlp/tmp'
+local_corenlp_path = './tmp'
 
 # Simple usage
 nlp = StanfordCoreNLP(local_corenlp_path)
